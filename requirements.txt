@@ -1,0 +1,10 @@
+pyinstaller
+requests
+flask
+pandas
+numpy
+keyboard
+pywin32
+pygetwindow
+psutil
+Pillow
