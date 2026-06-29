@@ -1,15 +1,13 @@
-name: Build Windows EXE
+name: Build and Commit EXE
 
 on:
   push:
     branches:
       - main
-      - master
-  pull_request:
-    branches:
-      - main
-      - master
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -18,42 +16,45 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - name: Upgrade pip
-        shell: pwsh
+      - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-
-      - name: Install Requirements
-        shell: pwsh
-        run: |
-          if (Test-Path "requirements.txt") {
+          if (Test-Path requirements.txt) {
               pip install -r requirements.txt
           }
           pip install pyinstaller
 
       - name: Build EXE
+        run: |
+          pyinstaller --onefile --noconsole --uac-admin --name KioskLocker kiosk_locker-3.py
+
+      - name: Copy EXE
         shell: pwsh
         run: |
-          pyinstaller `
-            --onefile `
-            --windowed `
-            --clean `
-            --name MyApplication `
-            app.py
+          New-Item -ItemType Directory -Force -Path release
+          Copy-Item dist\KioskLocker.exe release\KioskLocker.exe -Force
 
-      - name: List Build Files
+      - name: Commit EXE
         shell: pwsh
         run: |
-          Get-ChildItem dist
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      - name: Upload EXE
-        uses: actions/upload-artifact@v4
-        with:
-          name: MyApplication-Windows
-          path: dist/*.exe
+          git add release/KioskLocker.exe
+
+          git diff --cached --quiet
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "No changes to commit."
+            exit 0
+          }
+
+          git commit -m "Auto-build Windows EXE"
+          git push
