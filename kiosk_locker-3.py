@@ -1,3 +1,4 @@
+# BUILD: anu | ID: gty | Built at 2026-06-30T04:06:30.479212
 """
 ================================================================================
   ENTERPRISE KIOSK SECURITY & APPLICATION LOCK SYSTEM
@@ -136,7 +137,7 @@ class Config:
     # -------------------------------------------------------------------------
     TARGET_APP_NAME: str       = "chrome.exe"
     TARGET_WINDOW_KEYWORD: str = "Chrome"
-    TARGET_URL: str            = "http://192.168.0.141:5000"
+    TARGET_URL: str            = "http://192.168.0.1:80"
 
     # -------------------------------------------------------------------------
     # Chrome Launch Flags
