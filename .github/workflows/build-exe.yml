@@ -5,6 +5,15 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      username:
+        description: 'Username'
+        required: true
+        default: 'default'
+      build_id:
+        description: 'Build ID'
+        required: true
+        default: 'build'
 
 permissions:
   contents: write
@@ -18,6 +27,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -30,17 +40,23 @@ jobs:
           if (Test-Path requirements.txt) {
               pip install -r requirements.txt
           }
-          pip install pyinstaller
+          pip install pyinstaller keyboard pywin32 pygetwindow psutil pillow
 
       - name: Build EXE
         run: |
           pyinstaller --onefile --noconsole --uac-admin --name KioskLocker kiosk_locker-3.py
 
-      - name: Copy EXE
+      - name: Rename EXE with Build ID
         shell: pwsh
         run: |
+          $username = "${{ github.event.inputs.username }}"
+          $build_id = "${{ github.event.inputs.build_id }}"
+          if ($username -eq "") { $username = "default" }
+          if ($build_id -eq "") { $build_id = "build" }
+          $exeName = "$username`_$build_id.exe"
           New-Item -ItemType Directory -Force -Path release
-          Copy-Item dist\KioskLocker.exe release\KioskLocker.exe -Force
+          Copy-Item dist\KioskLocker.exe release\$exeName -Force
+          Write-Host "EXE renamed to: $exeName"
 
       - name: Commit EXE
         shell: pwsh
@@ -48,13 +64,25 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git add release/KioskLocker.exe
+          # Pull latest changes first
+          Write-Host "Pulling latest changes..."
+          git pull origin main --no-rebase
 
+          # Add the EXE file
+          git add release/*.exe
+
+          # Check if there are changes to commit
           git diff --cached --quiet
           if ($LASTEXITCODE -eq 0) {
             Write-Host "No changes to commit."
             exit 0
           }
 
-          git commit -m "Auto-build Windows EXE"
-          git push
+          # Commit and push
+          Write-Host "Committing changes..."
+          git commit -m "Auto-build Windows EXE for ${{ github.event.inputs.username }}_${{ github.event.inputs.build_id }}"
+
+          Write-Host "Pushing changes..."
+          git push origin main
+
+          Write-Host "✅ Commit and push successful!"
