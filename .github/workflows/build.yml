@@ -1,10 +1,19 @@
-name: Build and Commit EXE automatically by server
+name: Build and Commit EXE
 
 on:
   push:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      username:
+        description: 'Username'
+        required: true
+        default: 'default'
+      build_id:
+        description: 'Build ID'
+        required: true
+        default: 'build'
 
 permissions:
   contents: write
@@ -36,11 +45,17 @@ jobs:
         run: |
           pyinstaller --onefile --noconsole --uac-admin --name KioskLocker kiosk_locker-3.py
 
-      - name: Copy EXE
+      - name: Rename EXE with Build ID
         shell: pwsh
         run: |
+          $username = "${{ github.event.inputs.username }}"
+          $build_id = "${{ github.event.inputs.build_id }}"
+          if ($username -eq "") { $username = "default" }
+          if ($build_id -eq "") { $build_id = "build" }
+          $exeName = "$username`_$build_id.exe"
           New-Item -ItemType Directory -Force -Path release
-          Copy-Item dist\KioskLocker.exe release\KioskLocker.exe -Force
+          Copy-Item dist\KioskLocker.exe release\$exeName -Force
+          Write-Host "EXE renamed to: $exeName"
 
       - name: Commit EXE
         shell: pwsh
@@ -48,7 +63,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git add release/KioskLocker.exe
+          git add release/*.exe
 
           git diff --cached --quiet
           if ($LASTEXITCODE -eq 0) {
